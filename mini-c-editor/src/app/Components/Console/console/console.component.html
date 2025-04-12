@@ -1,0 +1,10 @@
+<div class="mt-4 p-3 bg-dark text-white rounded">
+    <h6>Consola:</h6>
+    <div *ngIf="salida">{{ salida }}</div>
+    <div *ngIf="errores?.length">
+      <div *ngFor="let error of errores" class="text-danger">
+        {{ error }}
+      </div>
+    </div>
+  </div>
+  
