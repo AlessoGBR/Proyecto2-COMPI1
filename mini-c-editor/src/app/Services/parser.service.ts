@@ -7,16 +7,23 @@ import * as peggy from 'peggy';
 export class ParserService {
 
   private parser: peggy.Parser | null = null;
+  public parserCargado = false;
 
   constructor() {
-    this.cargarParser();
+    
    }
 
    async cargarParser() {
+    try {
     const response = await fetch('assets/mini-c.pegjs');
     const grammar = await response.text();
     this.parser = peggy.generate(grammar);
+    this.parserCargado = true;
+  } catch (error) {
+    console.error('Error al cargar el parser:', error);
+    this.parserCargado = false;
   }
+  }  
 
   analizar(codigo: string): { salida: string; errores: string[] } {
     if (!this.parser) {

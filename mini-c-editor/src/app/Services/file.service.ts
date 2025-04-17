@@ -4,7 +4,7 @@ import * as yaml from 'js-yaml';
 export interface ArchivoProyecto {
   nombre: string;
   contenido: string;
-  handler: FileSystemFileHandle;
+  handler: FileSystemFileHandle | null;
 }
 
 @Injectable({
@@ -64,33 +64,52 @@ export class FileService {
     }
   }
 
-  async leerArchivosDesdeConfig(config: any): Promise<ArchivoProyecto[]> {
-    const archivos: ArchivoProyecto[] = [];
-    if (!this.directorioHandle) return [];
-
-    for (const key in config) {
-      if (key !== 'nombre_proyecto' && key !== 'main') {
-        const modulo = config[key];
-        for (const archivoItem of modulo) {
-          const nombreArchivo = Object.values(archivoItem)[0] as string;
-
-          try {
-            const fileHandle = await this.directorioHandle.getFileHandle(nombreArchivo);
-            const file = await fileHandle.getFile();
-            const contenido = await file.text();
-
-            archivos.push({
-              nombre: nombreArchivo,
-              contenido,
-              handler: fileHandle
-            });
-          } catch (error) {
-            console.warn(`No se pudo cargar el archivo: ${nombreArchivo}`, error);
-          }
+  async leerArchivosDesdeConfig(config: any): Promise<{ nombre: string; archivos: ArchivoProyecto[] }[]> {
+    const modulos: { nombre: string; archivos: ArchivoProyecto[] }[] = [];
+  
+    if (!this.directorioHandle) {
+      throw new Error('No se ha seleccionado un directorio');
+    }
+  
+    for (const key of Object.keys(config)) {
+      if (key === 'nombre_proyecto' || key === 'main') continue;
+  
+      const modulo = config[key]; 
+      const archivosModulo: ArchivoProyecto[] = [];
+  
+      for (const archivoDef of modulo) {
+        const nombreArchivo = Object.values(archivoDef)[0] as string;
+  
+        try {
+          const fileHandle = await this.directorioHandle.getFileHandle(nombreArchivo);
+          const file = await fileHandle.getFile();
+          const contenido = await this.leerArchivo(file); 
+          archivosModulo.push({
+            nombre: nombreArchivo,
+            contenido,
+            handler: fileHandle
+          });
+        } catch (err) {
+          console.error(`No se pudo cargar el archivo: ${nombreArchivo}`, err);
         }
       }
+  
+      modulos.push({ nombre: key, archivos: archivosModulo });
     }
+  
+    return modulos;
+  }
+  
 
-    return archivos;
+  async actualizarArchivo(archivo: ArchivoProyecto): Promise<void> {
+    if (!this.directorioHandle) return;
+    try {
+      const fileHandle = await this.directorioHandle.getFileHandle(archivo.nombre, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(archivo.contenido);
+      await writable.close();
+    } catch (error) {
+      console.error('Error al guardar el archivo', error);
+    }
   }
 }

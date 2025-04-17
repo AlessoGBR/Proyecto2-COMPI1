@@ -1,0 +1,22 @@
+.code-editor-container {
+  height: 400px;
+  position: relative;
+}
+
+.code-area {
+  height: 100%;
+  width: 100%;
+  border: none;
+  padding-left: 10px;
+  line-height: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.line-numbers {
+  height: 100%;
+  overflow: hidden;
+  padding-top: 4px;
+  line-height: 1.25rem;
+  font-size: 0.9rem;
+  color: #464646;
+}

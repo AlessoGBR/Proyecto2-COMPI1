@@ -42,7 +42,6 @@ export class HomeComponent {
       const configHandle = await directorio.getFileHandle('config.yml');
       const configFile = await configHandle.getFile();
       const config = await this.fileService.cargarConfig(configFile);
-      console.log('Configuración cargada:', config);
 
       this.router.navigate(['/editor']);
     } catch (error) {
