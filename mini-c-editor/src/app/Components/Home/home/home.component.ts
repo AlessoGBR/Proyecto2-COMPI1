@@ -8,50 +8,50 @@ import Swal from 'sweetalert2';
   standalone: true,
   imports: [],
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss'
+  styleUrl: './home.component.scss',
 })
 export class HomeComponent {
-
-  constructor(
-    private router: Router,
-    private fileService: FileService
-  ) {}
-
-  crearProyecto() {
-    const yaml = this.fileService.generarConfig('NuevoProyecto', {
-      modulo1: [
-        { archivo1: 'main.cmm' },
-        { archivo2: 'util.cmm' }
-      ]
-    });
-
-    this.fileService.descargarArchivo('config.yml', yaml);
-    Swal.fire({
-      title: 'Proyecto creado',
-      text: 'El archivo config.yml ha sido generado. Ahora puedes abrir el proyecto.',
-      icon: 'success',
-      confirmButtonText: 'Aceptar'
-    });
-  }
+  constructor(private router: Router, private fileService: FileService) {}
 
   async abrirProyecto() {
-    const directorio = await this.fileService.seleccionarDirectorio();
-    if (!directorio) return;
+    this.router.navigate(['/editor']);
+  }
 
-    try {
-      const configHandle = await directorio.getFileHandle('config.yml');
-      const configFile = await configHandle.getFile();
-      const config = await this.fileService.cargarConfig(configFile);
+  async crearProyecto() {
+    const { value: nombreProyecto } = await Swal.fire({
+      title: 'Crear Nuevo Proyecto',
+      input: 'text',
+      inputLabel: 'Nombre del Proyecto',
+      inputPlaceholder: 'Ingrese el nombre del proyecto',
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Debe ingresar un nombre para el proyecto';
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+          return 'El nombre solo puede contener letras, números, guiones y guiones bajos';
+        }
+        return null;
+      }
+    });
 
-      this.router.navigate(['/editor']);
-    } catch (error) {
-      Swal.fire({
-        title: 'Error',
-        text: 'No se encontró un archivo config.yml en la carpeta seleccionada.',
-        icon: 'error',
-        confirmButtonText: 'Aceptar'
-      });
-      console.error(error);
+    if (nombreProyecto) {
+      const resultado = await this.fileService.crearNuevoProyecto(nombreProyecto);
+
+      if (resultado) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Proyecto creado exitosamente',
+          text: `Se ha creado el proyecto "${nombreProyecto}"`,
+        });
+        this.router.navigate(['/editor']);
+      } else {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo crear el proyecto',
+        });
+      }
     }
   }
 }

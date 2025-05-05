@@ -1,0 +1,26 @@
+<div class="container mt-3">
+    <h4>Explorador de Proyecto</h4>
+    <div class="input-group mb-3">
+    <input [(ngModel)]="nuevoModuloNombre" type="text" class="form-control" placeholder="Nuevo módulo">
+    <button class="btn btn-primary" (click)="crearModulo()">Crear Módulo</button>
+    </div>
+    <div *ngFor="let modulo of modulos" class="card mb-2">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>{{ modulo.nombre }}</strong>
+        <button class="btn btn-danger btn-sm" (click)="eliminarModulo(modulo.nombre)">Eliminar módulo</button>
+    </div>
+    <ul class="list-group list-group-flush">
+        <li *ngFor="let archivo of modulo.archivos" class="list-group-item d-flex justify-content-between align-items-center">
+            <span (click)="seleccionarArchivo(archivo.archivo)" style="cursor: pointer;">{{ archivo.archivo.nombre }}</span>   
+            <button class="btn btn-sm btn-outline-danger" (click)="eliminarArchivo(modulo.nombre, archivo.archivo.nombre)">Eliminar</button>          
+        </li>
+        <li class="list-group-item">
+            <div class="input-group input-group-sm">
+                <input [(ngModel)]="modulo.nuevoArchivoNombre" type="text" class="form-control" placeholder="Nuevo archivo .cmm">
+                <button class="btn btn-success" (click)="crearArchivo(modulo.nombre, modulo.nuevoArchivoNombre)">Agregar</button>
+            </div>
+        </li>
+    </ul>
+    </div>
+</div>
+

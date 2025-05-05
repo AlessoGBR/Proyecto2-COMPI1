@@ -23,6 +23,7 @@
     "monaco-editor": "^0.52.2",
     "peggy": "^4.2.0",
     "rxjs": "~7.8.0",
+    "sweetalert2": "^11.19.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.10"
   },
