@@ -16,10 +16,10 @@ import Swal from 'sweetalert2';
   templateUrl: './editor.component.html',
   styleUrl: './editor.component.scss'
 })
+
 export class EditorComponent implements OnInit, AfterViewInit {
 
-  archivos: ArchivoProyecto[] = [];
-  modulos: { nombre: string, archivos: ArchivoProyecto[] }[] = [];
+  archivosProyecto: ArchivoProyecto[] = []; 
   archivoActual: ArchivoProyecto | null = null;
   contenidoArchivo: string = '';
   salida: string = '';
@@ -29,7 +29,7 @@ export class EditorComponent implements OnInit, AfterViewInit {
   @ViewChild('lineNumbers') lineNumbers!: ElementRef<HTMLDivElement>;
 
   constructor(
-    private fileService: FileService,    
+    private fileService: FileService,
     private parserService: ParserService
   ) {}
 
@@ -37,12 +37,12 @@ export class EditorComponent implements OnInit, AfterViewInit {
     this.updateLineNumbers();
   }
 
-  async ngOnInit() {
-  }
+  async ngOnInit() {}
 
-  abrirArchivo(archivo: ArchivoProyecto) {
-    this.archivoActual = archivo;
-    this.contenidoArchivo = archivo.contenido;
+  abrirArchivo(datos: { archivoPrincipal: ArchivoProyecto; archivosProyecto: ArchivoProyecto[] }) {
+    this.archivoActual = datos.archivoPrincipal;
+    this.archivosProyecto = datos.archivosProyecto;
+    this.contenidoArchivo = datos.archivoPrincipal.contenido;
     this.updateLineNumbers();
     this.salida = '';
     this.errores = [];
@@ -73,17 +73,17 @@ export class EditorComponent implements OnInit, AfterViewInit {
     if (!this.parserService.parserCargado) {
       await this.parserService.cargarParser();
     }
-    
+
     if (!this.parserService.parserCargado) {
       Swal.fire({
-        title: 'Error', 
+        title: 'Error',
         text: 'El parser aún no está cargado. Intenta nuevamente.',
         icon: 'error',
         confirmButtonText: 'Aceptar'
       });
       return;
     }
-    
+
     if (!this.contenidoArchivo.trim()) {
       Swal.fire({
         title: 'Error',
@@ -93,17 +93,19 @@ export class EditorComponent implements OnInit, AfterViewInit {
       });
       return;
     }
-    
-    const { salida, errores } = this.parserService.analizar(this.contenidoArchivo);
-    
+
+    if (this.archivoActual) {
+      this.archivoActual.contenido = this.contenidoArchivo;
+    }
+
+    const { salida, errores } = this.parserService.analizar(this.archivoActual!, this.archivosProyecto);
+
     this.salida = salida;
     this.errores = errores.map(e => {
       const archivo = this.archivoActual?.nombre || 'código';
       return `Error en ${archivo}: ${e}`;
     });
-    
   }
-
 
   updateLineNumbers() {
     const lineCount = this.contenidoArchivo.split('\n').length;

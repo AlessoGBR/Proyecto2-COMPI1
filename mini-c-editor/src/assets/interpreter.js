@@ -1,5 +1,8 @@
-{
-  function executeStatement(stmt, context, outputs) {
+function executeStatement(stmt, context, outputs) {  
+  if (!stmt || typeof stmt.type !== 'string') {
+    throw new Error(`Sentencia no reconocida: ${JSON.stringify(stmt)}`);
+  }
+
   switch (stmt.type) {
     case 'VarDecl':
       if (Object.prototype.hasOwnProperty.call(context.variables, stmt.name)) {
@@ -29,38 +32,38 @@
     case 'Assignment':
       if (stmt.field) {
         if (!variableExists(context, stmt.name)) {
-          throw new Error(`Variable no definida: ${stmt.name}`);
+            throw new Error(`Variable no definida: ${stmt.name}`);
         }
         const structVar = context.variables[stmt.name].value;
         if (typeof structVar !== 'object' || !structVar.__isStruct) {
-          throw new Error(`${stmt.name} no es un struct`);
+            throw new Error(`${stmt.name} no es un struct`);
         }
         if (!(stmt.field in structVar)) {
-          throw new Error(`El campo ${stmt.field} no existe en el struct ${stmt.name}`);
+            throw new Error(`El campo ${stmt.field} no existe en el struct ${stmt.name}`);
         }
         const newValue = evaluateExpression(stmt.value, context, outputs);
         structVar[stmt.field] = newValue;
-      } else {
+        } else {
         if (!variableExists(context, stmt.name)) {
-          throw new Error(`Variable no definida: ${stmt.name}`);
+            throw new Error(`Variable no definida: ${stmt.name}`);
         }
         const newValue = evaluateExpression(stmt.value, context, outputs);
         const varInfo = getVariable(context, stmt.name);
         
         if (varInfo.type && varInfo.type !== 'any') {
-          const valueType = inferType(newValue);
-          if (varInfo.type !== valueType && 
-              !(valueType === 'int' && varInfo.type === 'float')) {
+            const valueType = inferType(newValue);
+            if (varInfo.type !== valueType && 
+                !(valueType === 'int' && varInfo.type === 'float')) {
             throw new Error(`Error de tipo: No se puede asignar ${valueType} a una variable de tipo ${varInfo.type}`);
-          }
+            }
         }
         
         varInfo.value = newValue;
-      }
-      break;
+        }
+        break;
 
     case 'Print':
-      let value = evaluateExpression(stmt.value, context, outputs);
+        let value = evaluateExpression(stmt.value, context, outputs);
       
       if (stmt.value.type === 'StringInterpolation') {
         value = evaluateInterpolatedString(stmt.value, context);
@@ -357,7 +360,6 @@ function evaluateExpression(expr, context, outputs) {
         throw new Error(`Función no definida: ${expr.name}`);
       }
       const func = context.functions[expr.name];
-      
       if (func.params.length !== expr.args.length) {
         throw new Error(`Número incorrecto de argumentos para ${expr.name}. Se esperaban ${func.params.length}, se recibieron ${expr.args.length}`);
       }
@@ -571,406 +573,19 @@ function executeProgram(ast, context = null) {
       }
     }
   }
-  
-  return outputs;
+
+    return outputs;
 }
-}
-// GRAMATICA
-start
-  = _ program:statements _ {
-      const outputs = [];
-      const context = {
-        variables: {},
-        functions: {},
-        structs: {},
-        mainDefined: false
-      };
 
-      try {
-        for (const stmt of program) {
-          if (stmt.type === 'Function') {
-            if (stmt.name === 'main' && context.mainDefined) {
-              throw new Error("Solo se puede definir una función main");
-            }
-            
-            if (stmt.name === 'main') {
-              context.mainDefined = true;
-            }
-            
-            context.functions[stmt.name] = stmt;
-          } else if (stmt.type === 'Struct') {
-            context.structs[stmt.name] = stmt;
-          }
-        }
-
-        for (const stmt of program) {
-          if (stmt.type !== 'Function' && stmt.type !== 'Struct') {
-            executeStatement(stmt, context, outputs);
-          }
-        }
-
-
-        if (context.mainDefined && context.functions['main']) {
-          const mainFunc = context.functions['main'];
-          if (mainFunc.params.length > 0) {
-            throw new Error("La función main no debe tener parámetros");
-          }
-          
-          const mainContext = {
-            variables: {},
-            functions: context.functions,
-            structs: context.structs,
-            mainDefined: true
-          };
-          
-          for (const stmt of mainFunc.body) {
-            const result = executeStatement(stmt, mainContext, outputs);
-            if (result && result.return) {
-              break;
-            }
-          }
-        }
-
-        return outputs.length > 0 ? outputs.join('\n') : "Programa ejecutado";
-
-      } catch (error) {
-        const location = error.location || {};
-        throw {
-          message: error.message,
-          location: {
-            start: {
-              line: location.start ? location.start.line : 1,
-              column: location.start ? location.start.column : 1
-            }
-          }
-        };
-      }
-    }
-
-statements
-  = stmts:(statement _)* {
-      return stmts.map(([stmt]) => stmt);
-    }
-
-statement
-  = importStmt
-  / varDecl
-  / structDecl
-  / assignment
-  / printStmt
-  / funcDecl
-  / structDefDecl
-  / ifStmt
-  / forStmt
-  / returnStmt
-  / exprStmt
-  / block
-
-importStmt
-  = "#import" __ name:identifier _ {
-      return { type: "Import", name };
-    }
-
-block
-  = "{" _ body:statements _ "}" {
-      return { type: "Block", body };
-    }
-
-returnStmt
-  = "return" _ value:expression? _ ";" {
-      return { type: "Return", value };
-    }
-
-varDecl
-  = type:dataType __ name:identifier __? "=" __? value:expression __? ";" {
-      return { type: "VarDecl", varType: type, name, value };
-    }
-
-dataType
-  = "int" / "float" / "string" / "char" / "bool" / structType
-
-structType
-  = "struct" __ name:identifier {
-      return name;
-    }
-// PARA DECLARAR UN STRUCT CON LLAVES
-structDecl
-  = "struct" __ structName:identifier __ varName:identifier _ "=" _ "{" _ values:expressionList _ "}" _ ";" {
-      return { 
-        type: "StructDecl", 
-        structType: structName, 
-        name: varName,
-        values: values
-      };
-    }
-  / "struct" __ structName:identifier __ varName:identifier _ ";" {
-      return { 
-        type: "StructDecl", 
-        structType: structName,
-        name: varName,
-        values: []
-      };
-    }
-
-assignment
-  = name:identifier "." field:identifier _ "=" _ value:expression _ ";" {
-      return { type: "Assignment", name, field, value };
-    }
-  / name:identifier _ "=" _ value:expression _ ";" {
-      return { type: "Assignment", name, value };
-    }
-
-printStmt
-  = "print" _ "(" _ val:expression _ ")" _ ";" {
-      return { type: "Print", value: val };
-    }
-
-funcDecl
-  = ret:("void" / "int" / "float" / "string" / "bool" / "char" / structType) _ name:identifier _ "(" _ params:parameterList? _ ")" _ "{" __? body:statements __? "}" {
-      return { 
-        type: "Function", 
-        returnType: ret, 
-        name, 
-        params: params || [], 
-        body
-      };
-    }
-
-parameterList
-  = head:parameter tail:(_ "," _ parameter)* {
-      return [head, ...tail.map(t => t[3])];
-    }
-
-parameter
-  = type:dataType _ name:identifier _ "*" {
-      return { type: "Parameter", varType: type, name, byReference: true };
-    }
-  / type:dataType _ name:identifier {
-      return { type: "Parameter", varType: type, name, byReference: false };
-    }
-
-structDefDecl
-  = "struct" __ name:identifier _ "{" __ fields:structField* _ "}" {
-      return { 
-        type: "Struct", 
-        name, 
-        fields: fields.flat() 
-      };
-    }
-
-structField
-  = type:dataType _ names:identifierList _ ";" {
-      return names.map(name => ({
-        type: "Field",
-        varType: type,
-        name
-      }));
-    }
-
-identifierList
-  = head:identifier tail:(_ "," _ identifier)* {
-      return [head, ...tail.map(x => x[3])];
-    }
-
-ifStmt
-  = "if" _ "(" _ cond:expression _ ")" _ "{" _ thenBranch:(statement _)* _ "}" _
-    elseIfBranches:elseIfBranch*
-    elseBranch:("else" _ "{" _ stmts:(statement _)* _ "}")? {
-      return {
-        type: "If",
-        condition: cond,
-        thenBranch: thenBranch.map(([s]) => s),
-        elseIfBranches: elseIfBranches,
-        elseBranch: elseBranch ? elseBranch[4].map(([s]) => s) : []
-      };
-    }
-
-elseIfBranch
-  = "else" __ "if" _ "(" _ cond:expression _ ")" _ "{" _ body:(statement _)* _ "}" _ {
-      return {
-        condition: cond,
-        body: body.map(([s]) => s)
-      };
-    }
-
-forStmt
-  = "for" _ "(" _ init:(varDecl / assignment) _ cond:expression _ ";" _ update:forUpdate _ ")" _ "{" _ body:statements _ "}" {
-      return {
-        type: "For",
-        init,
-        condition: cond,
-        update,
-        body
-      };
-    }
-
-forUpdate
-  = inc:increment { return inc; }
-  / dec:decrement { return dec; }
-  / expr:expression { return expr; }
-
-increment
-  = name:identifier "++" {
-      return { type: "Inc", name };
-    }
-
-decrement
-  = name:identifier "--" {
-      return { type: "Dec", name };
-    }
-
-exprStmt
-  = expr:expression _ ";" {
-      return { type: "ExpressionStatement", expression: expr };
-    }
-
-expression
-  = logicOrExpr
-  / assignmentExpr 
-
-assignmentExpr
-  = struct:identifier "." field:identifier _ "=" _ expr:expression {
-      return {
-        type: "Assignment",
-        name: struct,
-        field,
-        value: expr
-      };
-    }
-  / id:identifier _ "=" _ expr:expression {
-      return {
-        type: "Assignment",
-        name: id,
-        value: expr
-      };
-    }
-
-logicOrExpr
-  = left:logicAndExpr _ "||" _ right:logicOrExpr {
-      return { type: "BinaryExpr", op: "||", left, right };
-    }
-  / logicAndExpr
-
-logicAndExpr
-  = left:equalityExpr _ "&&" _ right:logicAndExpr {
-      return { type: "BinaryExpr", op: "&&", left, right };
-    }
-  / equalityExpr
-
-equalityExpr
-  = left:relationalExpr _ op:("==" / "!=") _ right:equalityExpr {
-      return { type: "BinaryExpr", op, left, right };
-    }
-  / relationalExpr
-
-relationalExpr
-  = left:additiveExpr _ op:("<=" / ">=" / "<" / ">") _ right:relationalExpr {
-      return { type: "BinaryExpr", op, left, right };
-    }
-  / additiveExpr
-
-additiveExpr
-  = left:multiplicativeExpr _ op:("+" / "-") _ right:additiveExpr {
-      return { type: "BinaryExpr", op, left, right };
-    }
-  / multiplicativeExpr
-
-multiplicativeExpr
-  = left:exponentialExpr _ op:("*" / "/") _ right:multiplicativeExpr {
-      return { type: "BinaryExpr", op, left, right };
-    }
-  / exponentialExpr
-
-exponentialExpr
-  = left:unaryExpr _ "^" _ right:exponentialExpr {
-      return { type: "BinaryExpr", op: "^", left, right };
-    }
-  / unaryExpr
-
-unaryExpr
-  = op:("!" / "-") _ expr:unaryExpr {
-      return { type: "UnaryExpr", operator: op, operand: expr };
-    }
-  / primary
-
-primary
-  = number
-  / boolean
-  / interpolatedString
-  / string
-  / character
-  / structFieldAccess
-  / funcCall
-  / id:identifier { return { type: "Identifier", name: id }; }
-  / "(" _ expr:expression _ ")" { return expr; }
-
-structFieldAccess
-  = struct:identifier "." field:identifier {
-      return { type: "StructFieldAccess", struct, field };
-    }
-
-funcCall
-  = module:identifier "." func:identifier _ "(" _ args:expressionList? _ ")" {
-      return { type: "FunctionCall", module, name: func, args: args || [] };
-    }
-  / name:identifier _ "(" _ args:expressionList? _ ")" {
-      return { type: "FunctionCall", name, args: args || [] };
-    }
-
-expressionList
-  = head:expression tail:(_ "," _ expression)* {
-      return [head, ...tail.map(t => t[3])];
-    }
-
-interpolation
-  = "${" _ expr:expression _ "}" {
-      return expr;
-    }
-
-interpolatedString
-  = '"' parts:(textPart / interpolation)* '"' {
-      return {
-        type: "StringInterpolation",
-        parts
-      };
-    }
-
-textPart
-  = chars:$([^"$\\]+ / "\\" .) {
-      return chars;
-    }
-
-identifier
-  = !keyword $([a-zA-Z_][a-zA-Z0-9_]*) {
-      return text();
-    }
-
-keyword
-  = ("int" / "float" / "string" / "char" / "bool" / "void" / "struct" / "if" / "else" / "for" / "return" / "print" / "true" / "false") !identifierPart
-
-identifierPart
-  = [a-zA-Z0-9_]
-
-string
-  = '"' chars:[^"]* '"' { return { type: "String", value: chars.join("") }; }
-
-character
-  = "'" char:[^'] "'" { return { type: "Character", value: char }; }
-
-boolean
-  = value:("true" / "false") { return { type: "Boolean", value: value === "true" }; }
-
-number
-  = value:float { return { type: "Number", value, numberType: "float" }; }
-  / value:int { return { type: "Number", value, numberType: "int" }; }
-
-int
-  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }
-
-float
-  = intPart:[0-9]+ "." fracPart:[0-9]+ {
-      return parseFloat(intPart.join("") + "." + fracPart.join(""));
-    }
-
-_ = [ \t\n\r]*
-__ = [ \t\n\r]
+module.exports = {
+  executeStatement,
+  evaluateExpression,
+  toBooleanValue,
+  createBlockContext,
+  inferType,
+  getVariable,
+  variableExists,
+  evaluateInterpolatedString,
+  applyOperator,
+  applyUnaryOperator
+};

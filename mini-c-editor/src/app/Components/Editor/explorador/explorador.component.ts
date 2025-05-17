@@ -12,7 +12,10 @@ import Swal from 'sweetalert2';
 })
 export class ExploradorComponent implements OnInit {
 
-  @Output() archivoSeleccionado = new EventEmitter<ArchivoProyecto>();
+  @Output() archivoSeleccionado = new EventEmitter<{
+  archivoPrincipal: ArchivoProyecto;
+  archivosProyecto: ArchivoProyecto[];
+  }>();
   nuevoModuloNombre: string = '';
   moduloSeleccionado: string = '';
   modulos: Array<{ nombre: string; archivos: Array<{ archivo: ArchivoProyecto }>; nuevoArchivoNombre?: string }> = [];
@@ -78,8 +81,28 @@ export class ExploradorComponent implements OnInit {
     await this.fileService.actualizarYML();
   }
 
+  get todosLosArchivos(): ArchivoProyecto[] {
+  const archivos: ArchivoProyecto[] = [];
+
+  for (const mod of this.modulos) {
+    for (const archivoWrap of mod.archivos) {
+      archivos.push(archivoWrap.archivo);
+    }
+  }
+
+  const archivoConfig = this.fileService.archivoConfig;
+  if (archivoConfig) {
+    archivos.push(archivoConfig);
+  }
+
+  return archivos;
+}
+
   seleccionarArchivo(archivo: ArchivoProyecto) {
-    this.archivoSeleccionado.emit(archivo);
+    this.archivoSeleccionado.emit({
+      archivoPrincipal: archivo,
+      archivosProyecto: this.todosLosArchivos
+    });
   }
   
 }

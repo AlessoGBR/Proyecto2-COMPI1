@@ -14,7 +14,8 @@ export class FileService {
 
   config: any = null;
   directorioHandle: FileSystemDirectoryHandle | null = null;
-
+  archivoConfig: ArchivoProyecto | null = null;
+  
   constructor() {}
 
   leerArchivo(file: File): Promise<string> {
