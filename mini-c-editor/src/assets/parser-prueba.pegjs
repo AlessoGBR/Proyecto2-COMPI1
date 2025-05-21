@@ -82,7 +82,7 @@ printStmt
     }
 
 funcDecl
-  = ret:("void" / "int" / "float" / "string" / "bool" / "char" / structType) _ name:identifier _ "(" _ params:parameterList? _ ")" _ "{" __? body:statements __? "}" {
+  = ret:("void" / "int" / "float" / "string" / "bool" / "char" / structType) _ name:identifier _ "(" _ params:parameterList? _ ")" _ "{" _ body:statements _ "}" {
       return { 
         type: "Function", 
         returnType: ret, 
