@@ -115,7 +115,7 @@ structDefDecl
     }
 
 structField
-  = type:dataType _ names:identifierList _ ";" {
+  = type:dataType _ names:identifierList _ ";" _{
       return names.map(name => ({
         type: "Field",
         varType: type,
